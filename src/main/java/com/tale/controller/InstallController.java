@@ -13,6 +13,7 @@ import com.blade.mvc.annotation.Route;
 import com.blade.mvc.http.HttpMethod;
 import com.blade.mvc.http.Request;
 import com.blade.mvc.view.RestResponse;
+import com.tale.controller.admin.AttachController;
 import com.tale.dto.JdbcConf;
 import com.tale.exception.TipException;
 import com.tale.ext.Commons;
@@ -43,10 +44,14 @@ public class InstallController extends BaseController {
      */
     @Route(value = "/", method = HttpMethod.GET)
     public String index(Request request) {
-        String webRoot = Blade.$().webRoot();
-        boolean existInstall = FileKit.exist(webRoot + "/install.lock");
+        String webRoot = AttachController.CLASSPATH;
+        boolean existInstall = FileKit.exist(webRoot + "install.lock");
         if (existInstall) {
-            request.attribute("is_install", !"1".equals(TaleConst.OPTIONS.get("allow_install")));
+            if("1".equals(TaleConst.OPTIONS.get("allow_install", "0"))){
+                request.attribute("is_install", false);
+            } else {
+                request.attribute("is_install", true);
+            }
         } else {
             request.attribute("is_install", false);
         }
@@ -97,6 +102,9 @@ public class InstallController extends BaseController {
 
             if (site_url.endsWith("/")) {
                 site_url = site_url.substring(0, site_url.length() - 1);
+            }
+            if (!site_url.startsWith("http")) {
+                site_url = "http://".concat(site_url);
             }
             optionsService.saveOption("site_title", site_title);
             optionsService.saveOption("site_url", site_url);
