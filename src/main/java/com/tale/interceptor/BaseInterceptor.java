@@ -31,9 +31,16 @@ public class BaseInterceptor implements Interceptor {
     public boolean before(Request request, Response response) {
 
         String uri = request.uri();
+        String ip = IPKit.getIpAddrByRequest(request.raw());
+
+        // 禁止该ip访问
+        if(TaleConst.BLOCK_IPS.contains(ip)){
+            response.text("You have been banned, brother");
+            return false;
+        }
 
         LOGGE.info("UserAgent: {}", request.userAgent());
-        LOGGE.info("用户访问地址: {}, 来路地址: {}", uri, IPKit.getIpAddrByRequest(request.raw()));
+        LOGGE.info("用户访问地址: {}, 来路地址: {}", uri, ip);
 
         if (!TaleConst.INSTALL && !uri.startsWith("/install")) {
             response.go("/install");
@@ -44,15 +51,18 @@ public class BaseInterceptor implements Interceptor {
             Users user = TaleUtils.getLoginUser();
             if (null == user) {
                 Integer uid = TaleUtils.getCookieUid(request);
-                ;
                 if (null != uid) {
                     user = usersService.byId(Integer.valueOf(uid));
                     request.session().attribute(TaleConst.LOGIN_SESSION_KEY, user);
                 }
             }
-            if (uri.startsWith("/admin") && !uri.startsWith("/admin/login") && null == user) {
-                response.go("/admin/login");
-                return false;
+
+            if(uri.startsWith("/admin") && !uri.startsWith("/admin/login")){
+                if(null == user){
+                    response.go("/admin/login");
+                    return false;
+                }
+                request.attribute("plugin_menus", TaleConst.plugin_menus);
             }
         }
         String method = request.method();

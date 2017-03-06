@@ -18,12 +18,14 @@ import com.tale.model.Users;
 import com.tale.service.ContentsService;
 import com.tale.service.LogService;
 import com.tale.service.MetasService;
+import com.tale.service.SiteService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 /**
+ * 文章管理控制器
  * Created by biezhi on 2017/2/21.
  */
 @Controller("admin/article")
@@ -40,6 +42,16 @@ public class ArticleController extends BaseController {
     @Inject
     private LogService logService;
 
+    @Inject
+    private SiteService siteService;
+
+    /**
+     * 文章管理首页
+     * @param page
+     * @param limit
+     * @param request
+     * @return
+     */
     @Route(value = "", method = HttpMethod.GET)
     public String index(@QueryParam(value = "page", defaultValue = "1") int page,
                         @QueryParam(value = "limit", defaultValue = "15") int limit, Request request) {
@@ -49,6 +61,11 @@ public class ArticleController extends BaseController {
         return "admin/article_list";
     }
 
+    /**
+     * 文章发布页面
+     * @param request
+     * @return
+     */
     @Route(value = "publish", method = HttpMethod.GET)
     public String newArticle(Request request) {
         List<Metas> categories = metasService.getMetas(Types.CATEGORY);
@@ -56,6 +73,12 @@ public class ArticleController extends BaseController {
         return "admin/article_edit";
     }
 
+    /**
+     * 文章编辑页面
+     * @param cid
+     * @param request
+     * @return
+     */
     @Route(value = "/:cid", method = HttpMethod.GET)
     public String editArticle(@PathParam String cid, Request request) {
         Contents contents = contentsService.getContents(cid);
@@ -66,6 +89,20 @@ public class ArticleController extends BaseController {
         return "admin/article_edit";
     }
 
+    /**
+     * 发布文章操作
+     *
+     * @param title
+     * @param content
+     * @param tags
+     * @param categories
+     * @param status
+     * @param slug
+     * @param allow_comment
+     * @param allow_ping
+     * @param allow_feed
+     * @return
+     */
     @Route(value = "publish", method = HttpMethod.POST)
     @JSON
     public RestResponse publishArticle(@QueryParam String title, @QueryParam String content,
@@ -99,6 +136,7 @@ public class ArticleController extends BaseController {
 
         try {
             contentsService.publish(contents);
+            siteService.cleanCache(Types.C_STATISTICS);
         } catch (Exception e) {
             String msg = "文章发布失败";
             if (e instanceof TipException) {
@@ -111,6 +149,21 @@ public class ArticleController extends BaseController {
         return RestResponse.ok();
     }
 
+    /**
+     * 修改文章操作
+     *
+     * @param cid
+     * @param title
+     * @param content
+     * @param tags
+     * @param categories
+     * @param status
+     * @param slug
+     * @param allow_comment
+     * @param allow_ping
+     * @param allow_feed
+     * @return
+     */
     @Route(value = "modify", method = HttpMethod.POST)
     @JSON
     public RestResponse modifyArticle(@QueryParam Integer cid, @QueryParam String title,
@@ -152,11 +205,19 @@ public class ArticleController extends BaseController {
         return RestResponse.ok();
     }
 
+    /**
+     * 删除文章操作
+     *
+     * @param cid
+     * @param request
+     * @return
+     */
     @Route(value = "delete")
     @JSON
     public RestResponse delete(@QueryParam int cid, Request request) {
         try {
             contentsService.delete(cid);
+            siteService.cleanCache(Types.C_STATISTICS);
             logService.save(LogActions.DEL_ARTICLE, cid+"", request.address(), this.getUid());
         } catch (Exception e) {
             String msg = "文章删除失败";
